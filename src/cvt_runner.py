@@ -281,7 +281,7 @@ def main():
     )
     do_training_loop(cvt_13_model, cfg, train_loader, gaussian_dataloader, val_loader, criterion, criterion_eval, optimizer, scheduler, mixup_fn, run_id=run_logical_id)    
     model, optimizer, scheduler, epoch = load_model(cvt_13_model, optimizer, scheduler, path=f"./OUTPUT/{run_logical_id}/best.pth")
-    test_results = test(cvt_13_model, val_loader, config)
+    test_results = test(model, val_loader, cfg)
 
     print("Final Test Results")
     print(f"Test Loss: {test_results['loss']:.4f}")

@@ -39,6 +39,7 @@ from criterion import build_criterion
 from timm.data.mixup import Mixup
 from metrics import AverageMeter, accuracy
 from model_utils import save_model, load_model
+import copy
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 print("Device: ", DEVICE)
 def train_one_epoch(epoch, model, train_loader, gaussian_loader, criterion, optimizer, scheduler, 
@@ -279,7 +280,12 @@ def main():
         label_smoothing=0.0,
         num_classes=num_classes
     )
-    do_training_loop(cvt_13_model, cfg, train_loader, gaussian_dataloader, val_loader, criterion, criterion_eval, optimizer, scheduler, mixup_fn, run_id=run_logical_id)    
+    wandb_config = copy.deepcopy(cfg)
+    wandb_config['lerac_epochs'] = args.lerac_epochs
+    wandb_config['blur_epochs'] = args.blur_epochs
+    wandb_config['c_factor'] = args.c_factor
+    wandb_config['eta_0'] = args.eta_0
+    do_training_loop(cvt_13_model, wandb_config, train_loader, gaussian_dataloader, val_loader, criterion, criterion_eval, optimizer, scheduler, mixup_fn, run_id=run_logical_id)    
     model, optimizer, scheduler, epoch = load_model(cvt_13_model, optimizer, scheduler, path=f"./OUTPUT/{run_logical_id}/best.pth")
     test_results = test(model, val_loader, cfg)
 

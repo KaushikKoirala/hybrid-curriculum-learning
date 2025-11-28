@@ -1,33 +1,12 @@
 import torch
-from torchsummary import summary
-import torchvision
-from torchvision.utils import make_grid
-from torchvision import datasets, transforms as T
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import os
 import gc
 # from tqdm import tqdm
 from tqdm.auto import tqdm
-from PIL import Image
 import numpy as np
-import pandas as pd
-from sklearn.metrics import accuracy_score
-from sklearn import metrics as mt
-from scipy.optimize import brentq
-from scipy.interpolate import interp1d
-import glob
 import wandb
 import matplotlib.pyplot as plt
-from pytorch_metric_learning import samplers
-import csv
-import logging
-from timm.data import create_loader, create_transform
-import torch.nn as nn
-from functools import partial
-import torch
-from einops import rearrange
-from einops.layers.torch import Rearrange
+
 
 from config import cvt_13_cifar_config, cvt_13_imagenet_config
 from dataloaders import dataloader
@@ -164,11 +143,8 @@ def do_training_loop(model, cfg, train_loader, gaussian_loader, val_loader, crit
     )
     gc.collect() # These commands help you when you face CUDA OOM error
     torch.cuda.empty_cache()
-    train_losses = []
-    train_accs = []
-    val_losses = []
     val_accs = []
-    best_loss = -1
+    best_acc = -1
     start_epoch = cfg['TRAIN']['BEGIN_EPOCH']
     end_epoch = cfg['TRAIN']['END_EPOCH']
 
@@ -185,8 +161,8 @@ def do_training_loop(model, cfg, train_loader, gaussian_loader, val_loader, crit
                         cfg, scaler, mixup_fn)
         
         val_loss, val_acc = validate(model, val_loader, criterion_eval, cfg)
-        is_best = (best_loss) == -1 or val_loss < best_loss
-        best_loss = min(val_loss, best_loss)
+        is_best = (best_acc) == -1 or val_acc > best_acc
+        best_acc = max(val_acc, best_acc)
         if epoch %20 == 0:
             save_model(model, optimizer, scheduler, epoch,os.path.join(cfg['OUTPUT_DIR'], f'{epoch}.pth'))
         if is_best:

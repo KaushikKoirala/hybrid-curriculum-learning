@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+import numpy as np
 
 CVT_BLOCKS = [1, 2, 10]
 def get_cvt_optimizer(config, model, eta_0: float = .002):
@@ -44,13 +45,8 @@ def get_cvt_optimizer(config, model, eta_0: float = .002):
 
     base_lr = float(config['TRAIN']['LR'])
     min_lr  = float(config['TRAIN']['LR_CURRICULUM']['MIN_LR'])
-    gamma   = float(config['TRAIN']['LR_CURRICULUM'].get('GAMMA', 0.002))
 
-    init_lrs = []
-    cur = base_lr
-    for _ in depth_prefixes:
-        init_lrs.append(max(min_lr, cur))
-        cur *= eta_0
+    init_lrs = np.logspace(np.log(base_lr), np.log(min_lr), len(depth_prefixes))
 
     buckets_decay    = OrderedDict((p, []) for p in depth_prefixes)
     buckets_nodecay  = OrderedDict((p, []) for p in depth_prefixes)
@@ -72,9 +68,9 @@ def get_cvt_optimizer(config, model, eta_0: float = .002):
     param_groups = []
     for pref, init_lr in zip(depth_prefixes, init_lrs):
         if buckets_decay[pref]:
-            param_groups.append({'params': buckets_decay[pref],   'lr': init_lr, 'weight_decay': wd,  '_init_lr': init_lr})
+            param_groups.append({'params': buckets_decay[pref],   'lr': init_lr, 'weight_decay': wd})
         if buckets_nodecay[pref]:
-            param_groups.append({'params': buckets_nodecay[pref], 'lr': init_lr, 'weight_decay': 0.0, '_init_lr': init_lr})
+            param_groups.append({'params': buckets_nodecay[pref], 'lr': init_lr, 'weight_decay': 0.0})
 
     if misc_decay:
         param_groups.append({'params': misc_decay,   'lr': base_lr, 'weight_decay': wd,  '_init_lr': base_lr})

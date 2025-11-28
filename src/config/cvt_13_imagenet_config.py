@@ -1,4 +1,4 @@
-def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: int = 20):
+def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: int = 20, eta_min: float = 2e-8):
 # params largely copied from https://github.com/leoxiaobin/CvT/blob/main/experiments/imagenet/cvt/cvt-13-224x224.yaml
     config = {
     "OUTPUT_DIR": f"OUTPUT/{run_id}",
@@ -79,7 +79,7 @@ def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: 
         "BEGIN_EPOCH": 0,
         "END_EPOCH": 100,
         "LR_CURRICULUM": {
-            "MIN_LR": 2e-6, #https://github.com/CroitoruAlin/LeRaC/blob/main/experiments/cvt_experiments.py#L78
+            "MIN_LR": eta_min, #https://github.com/CroitoruAlin/LeRaC/blob/main/experiments/cvt_experiments.py#L78
             "WARMUP_EPOCHS": lerac_epochs
         },      
         "LR_SCHEDULER": {

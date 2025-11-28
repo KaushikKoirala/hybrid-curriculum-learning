@@ -227,22 +227,22 @@ def main():
     parser.add_argument('-l', '--lerac_epochs', type=int, default=5)
     parser.add_argument('-b', '--blur_epochs', type=int, default=20)
     parser.add_argument('-c', '--c_factor', type=float, default=10.0)
-    parser.add_argument('-e', '--eta_0', type=float, default=.002)
+    parser.add_argument('-e', '--eta_min', type=float, default=2e-8)
     args = parser.parse_args()
     run_logical_id = f'{args.dataset}_hybrid_{args.run_name}'
     if args.dataset.lower() == 'cifar':
-        cfg = cvt_13_cifar_config.get_cvt_13_cifar_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs)
+        cfg = cvt_13_cifar_config.get_cvt_13_cifar_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
         gaussian_dataloader = dataloader.build_gaussian_dataloader_cifar(cfg)
         train_loader, val_loader = dataloader.get_cifar_dataloaders(cfg)
         num_classes = 10
     elif args.dataset.lower() == 'imagenet':
-        cfg = cvt_13_imagenet_config.get_cvt_13_imagenet_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs)
+        cfg = cvt_13_imagenet_config.get_cvt_13_imagenet_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
         gaussian_dataloader = dataloader.build_gaussian_dataloader_imagenet(cfg)
         train_loader, val_loader = dataloader.get_imagenet_dataloaders(cfg)
         num_classes = 100
     cvt_13_model = cvt_13.create_cvt_13(cfg, num_classes=num_classes)
     params.count_parameters(cvt_13_model)
-    optimizer = cvt_optimizer.get_cvt_optimizer(cfg, cvt_13_model, eta_0=args.eta_0)
+    optimizer = cvt_optimizer.get_cvt_optimizer(cfg, cvt_13_model)
     scheduler = cvt_schedule.get_cvt_scheduler(cfg, optimizer, c_factor=args.c_factor)
     criterion = build_criterion()
     criterion.cuda()
@@ -260,7 +260,7 @@ def main():
     wandb_config['lerac_epochs'] = args.lerac_epochs
     wandb_config['blur_epochs'] = args.blur_epochs
     wandb_config['c_factor'] = args.c_factor
-    wandb_config['eta_0'] = args.eta_0
+    wandb_config['eta_min'] = args.eta_min
     do_training_loop(cvt_13_model, wandb_config, train_loader, gaussian_dataloader, val_loader, criterion, criterion_eval, optimizer, scheduler, mixup_fn, run_id=run_logical_id)    
     model, optimizer, scheduler, epoch = load_model(cvt_13_model, optimizer, scheduler, path=f"./OUTPUT/{run_logical_id}/best.pth")
     test_results = test(model, val_loader, cfg)

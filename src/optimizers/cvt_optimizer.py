@@ -4,7 +4,7 @@ from collections import OrderedDict
 import numpy as np
 
 CVT_BLOCKS = [1, 2, 10]
-def get_cvt_optimizer(config, model, eta_0: float = .002):
+def get_cvt_optimizer(config, model):
     depth_prefixes = []
     for s, nb in enumerate(CVT_BLOCKS):
         depth_prefixes.append(f"stages.{s}.patch_embed")

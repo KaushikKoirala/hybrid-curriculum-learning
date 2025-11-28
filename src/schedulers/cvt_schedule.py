@@ -69,7 +69,7 @@ def get_cvt_scheduler(config, optimizer, c_factor: float = 10.0):
         optimizer, target_lr=base_lr, num_iterations=warmup_epochs
     )
 
-    cosine_epochs = max(1, num_epochs - warmup_epochs-1)
+    cosine_epochs = max(1, num_epochs - warmup_epochs)
     cosine_scheduler = CosineAnnealingLR(
         optimizer, T_max=cosine_epochs, eta_min=min_lr
     )
@@ -77,9 +77,9 @@ def get_cvt_scheduler(config, optimizer, c_factor: float = 10.0):
     scheduler = SequentialLR(
         optimizer,
         schedulers=[lerac_scheduler, cosine_scheduler],
-        milestones=[warmup_epochs+1]  
+        milestones=[warmup_epochs]  
     )
 
-    print(f"Scheduler: LeRaC warm-up ({warmup_epochs + 1} ep) -> Cosine ({cosine_epochs} ep)")
+    print(f"Scheduler: LeRaC warm-up ({warmup_epochs} ep) -> Cosine ({cosine_epochs} ep)")
     print(f"  Base LR: {base_lr} | Min LR: {min_lr} | Total epochs: {num_epochs}")
     return scheduler

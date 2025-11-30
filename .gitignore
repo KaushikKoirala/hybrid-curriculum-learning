@@ -52,5 +52,12 @@ ENV/
 env.bak/
 venv.bak/
 
-.err
-.out
+*.err
+*.out
+*.pth
+*.slurm
+*.log
+*.wandb
+wandb/
+cifar-10/
+

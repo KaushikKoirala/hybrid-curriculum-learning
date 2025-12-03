@@ -10,6 +10,7 @@ from torchvision import transforms, datasets, models
 from torch.utils.data import random_split, DataLoader
 from tqdm.auto import tqdm
 from contextlib import nullcontext
+import matplotlib.pyplot as plt
 
 import argparse
 from config.convNext_cifar_config import get_convNext_cifar_config
@@ -205,6 +206,29 @@ def main():
         if epoches_no_improve >= patience:
             print("Early stopping")
             break
+
+    # Plot the training and validation accuracy
+    print("Plotting training history...")
+    plt.figure(figsize=(10, 6))
+    
+    # Generate x-axis (epochs)
+    epochs_range = range(1, len(history["train_acc"]) + 1)
+    
+    plt.plot(epochs_range, history["train_acc"], label='Training Accuracy', color='blue')
+    plt.plot(epochs_range, history["val_acc"], label='Validation Accuracy', color='orange')
+    
+    plt.title('Training and Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy (%)')
+    plt.legend(loc='lower right')
+    plt.grid(True)
+    
+    plot_path = f"{config['ckpt_dir']}/accuracy_plot.png"
+    plt.savefig(plot_path)
+    print(f"Accuracy plot saved to {plot_path}")
+    plt.close()
+
+
     if args.dataset.lower() == 'cifar':
         test_loss, test_acc = run_epoch(test_loader, model, None)
         print(f"Test  - loss: {test_loss:.4f} - accuracy: {test_acc:.2f}%")

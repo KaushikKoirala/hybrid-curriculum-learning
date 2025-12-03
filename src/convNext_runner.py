@@ -19,6 +19,7 @@ from models.convNext_tiny import create_convNextT
 from optimizers.convNext_optimizer import get_convNextT_optimizer
 from schedulers.convNext_scheduler import get_convNextT_scheduler
 from model_utils import save_model, load_model
+from snr_utils import calculate_layer_snr, visualize_snr
 
 SEED = 42
 random.seed(SEED);  torch.manual_seed(SEED);  torch.cuda.manual_seed_all(SEED)
@@ -77,11 +78,44 @@ def run_epoch(config, loader, model, scaler, optimizer, scheduler, criterion, ep
     torch.cuda.empty_cache()     # free any leftover cached blocks
     return running_loss/steps, running_acc/steps
 
+def run_snr_analysis(config, device):
+    print("\n--- Starting SNR Analysis ---")
+    
+    # 1. Load Data
+    # Use validation loader for stable statistics
+    if config['dataset_path'] == "ImageNet100_224":
+        _, val_loader = get_imagenet100_loaders(config)
+    else:
+        _, val_loader, _ = get_cifar_loaders(config)
 
-gc.collect() # These commands help you when you face CUDA OOM error
-torch.cuda.empty_cache()
+    # 2. Initialize Models
+    # Model A: Randomly Initialized (The "Noisy" state at Epoch 0)
+    model_random = create_convNextT(config).to(device)
+    
+    # Model B: Converged / Best Model (The "Clean Signal" reference)
+    model_best = create_convNextT(config).to(device)
+    
+    # Load weights for Model B
+    ckpt_path = f"{config['ckpt_dir']}/best_convnext_tiny.pth"
+    if os.path.exists(ckpt_path):
+        checkpoint = torch.load(ckpt_path, map_location=device)
+        # Handle cases where checkpoint saves state_dict inside a key
+        if 'model_state_dict' in checkpoint:
+            model_best.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            model_best.load_state_dict(checkpoint)
+        print("Loaded best checkpoint for SNR reference.")
+    else:
+        print("Warning: Best checkpoint not found. Using random weights as reference (Analysis will be meaningless).")
 
-import os
+    # 3. Calculate SNR
+    # This compares how much "noise" the random initialization adds relative to the trained features
+    layers, snrs = calculate_layer_snr(model_random, model_best, val_loader, device)
+
+    # 4. Plot
+    save_loc = f"{config['ckpt_dir']}/snr_decay_plot.png"
+    visualize_snr(layers, snrs, save_path=save_loc)
+                  
 
 def main():
     parser = argparse.ArgumentParser(description="Training Script")
@@ -97,10 +131,10 @@ def main():
 
     if args.dataset.lower() == 'cifar':
         config = get_convNext_cifar_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
-        train_loader_normal, train_loader_blur, val_loader, test_loader = get_cifar_loaders(config)
+        train_loader, val_loader, test_loader = get_cifar_loaders(config)
     elif args.dataset.lower() == 'imagenet':
         config = get_convNext_imagenet_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
-        train_loader_normal, train_loader_blur, val_loader = get_imagenet100_loaders(config)
+        train_loader, val_loader = get_imagenet100_loaders(config)
 
     checkpoint_dir = config['ckpt_dir']
 
@@ -108,7 +142,7 @@ def main():
     model = model.to(device)
 
     optimizer = get_convNextT_optimizer(config, model)
-    scheduler =get_convNextT_scheduler(config, optimizer, len(train_loader_normal))
+    scheduler =get_convNextT_scheduler(config, optimizer, len(train_loader))
 
     criterion  = nn.CrossEntropyLoss()
     scaler = torch.cuda.amp.GradScaler(enabled=config["amp"])
@@ -121,6 +155,9 @@ def main():
     # Create the directory if it doesn't exist
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    gc.collect() # These commands help you when you face CUDA OOM error
+    torch.cuda.empty_cache()
+
     best_val_acc = 0.0
     patience = 16
     epoches_no_improve = 0
@@ -131,12 +168,9 @@ def main():
     for epoch in range(1, config["num_epochs"]+1):
         t0 = time.time()
 
-        # pick which train loader to use this epoch
-        use_blur = epoch <= config["blur_epochs"]
-        loader_this_epoch = train_loader_blur if use_blur else train_loader_normal
-        phase_name = f"train-{'blur' if use_blur else 'normal'}"
+        train_loader.dataset.set_epoch(epoch - 1)
 
-        tr_loss, tr_acc = run_epoch(config, loader_this_epoch, model, scaler, optimizer, scheduler, criterion, epoch, phase_name)
+        tr_loss, tr_acc = run_epoch(config, train_loader, model, scaler, optimizer, scheduler, criterion, epoch, "train")
         val_loss, val_acc= run_epoch(config, val_loader, model, scaler, optimizer, scheduler, criterion, epoch, "val")
 
         history["train_loss"].append(tr_loss); history["train_acc"].append(tr_acc)
@@ -174,6 +208,8 @@ def main():
     if args.dataset.lower() == 'cifar':
         test_loss, test_acc = run_epoch(test_loader, model, None)
         print(f"Test  - loss: {test_loss:.4f} - accuracy: {test_acc:.2f}%")
+    
+    run_snr_analysis(config, device)
 
 if __name__ == '__main__':
     main()

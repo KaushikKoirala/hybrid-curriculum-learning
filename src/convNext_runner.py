@@ -19,7 +19,7 @@ from dataloaders.convNext_dataloader import get_cifar_loaders, get_imagenet100_l
 from models.convNext_tiny import create_convNextT
 from optimizers.convNext_optimizer import get_convNextT_optimizer
 from schedulers.convNext_scheduler import get_convNextT_scheduler
-from model_utils import save_model, load_model
+from model_utils import save_model_w_metric, load_model_w_metric
 from snr_utils import calculate_layer_snr, visualize_snr
 
 SEED = 42
@@ -188,13 +188,13 @@ def main():
             epoches_no_improve = 0
             best_val_acc = val_acc
 
-            save_model(model, optimizer, scheduler, metrics, epoch, f"{config['ckpt_dir']}/best_convnext_tiny.pth")
+            save_model_w_metric(model, optimizer, scheduler, metrics, epoch, f"{config['ckpt_dir']}/best_convnext_tiny.pth")
             print("Saved best val acc model")
 
         else:
             epoches_no_improve += 1
 
-        save_model(model, optimizer, scheduler, metrics, epoch, f"{config['ckpt_dir']}/current_epoch.pth")
+        save_model_w_metric(model, optimizer, scheduler, metrics, epoch, f"{config['ckpt_dir']}/current_epoch.pth")
         print(f"Saved epoch {epoch} model")
 
         print(f"Epoch {epoch:02}/{config['num_epochs']} "

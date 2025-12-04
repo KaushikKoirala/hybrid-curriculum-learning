@@ -9,16 +9,13 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-# Add current directory (src_resnet18) to path - everything is self-contained
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
-
-# Import from src_resnet18 modules (all self-contained)
+# Import from src modules (direct imports)
 from config.resnet18_cifar_config import get_resnet18_cifar_config
 from config.resnet18_imagenet_config import get_resnet18_imagenet_config
-from models import resnet18, params
-from optimizers import get_resnet18_optimizer
-from schedulers import get_resnet18_scheduler
+from models.resnet18 import create_resnet18
+from models.params import count_parameters
+from optimizers.resnet18_optimizer import get_resnet18_optimizer
+from schedulers.resnet18_schedule import get_resnet18_scheduler
 from dataloaders import dataloader
 from criterion import build_criterion
 from metrics import AverageMeter, accuracy
@@ -255,8 +252,8 @@ def main():
     else:
         raise ValueError(f"Unsupported dataset: {args.dataset}. Supported options: 'cifar' or 'imagenet'")
     
-    resnet18_model = resnet18.create_resnet18(cfg, num_classes=num_classes)
-    params.count_parameters(resnet18_model)
+    resnet18_model = create_resnet18(cfg, num_classes=num_classes)
+    count_parameters(resnet18_model)
     optimizer = get_resnet18_optimizer(cfg, resnet18_model)
     scheduler = get_resnet18_scheduler(cfg, optimizer, c_factor=args.c_factor)
     criterion = build_criterion()

@@ -34,7 +34,12 @@ def train_one_epoch(epoch, model, train_loader, gaussian_loader, criterion, opti
     model.train()
     accumulation_steps = config['TRAIN'].get('GRADIENT_ACCUMULATION_STEPS', 1)
     batch_bar = tqdm(total=len(train_loader), dynamic_ncols=True, leave=False, position=0, desc='Train', ncols=5)
-    loader = gaussian_loader if epoch < config['TRAIN']['BLUR']['EPOCHS'] else train_loader
+    if epoch < config['TRAIN']['BLUR']['EPOCHS']:
+        loader = gaussian_loader
+        if loader.linear_blur is not None:
+            loader.linear_blur.set_epoch(epoch)
+    else:
+        loader = train_loader
     for idx, (images, targets) in enumerate(loader):
         images = images.to(DEVICE, non_blocking=True)
         targets = targets.to(DEVICE, non_blocking=True)
@@ -228,15 +233,16 @@ def main():
     parser.add_argument('-b', '--blur_epochs', type=int, default=20)
     parser.add_argument('-c', '--c_factor', type=float, default=10.0)
     parser.add_argument('-e', '--eta_min', type=float, default=2e-8)
+    parser.add_argument('--linear_blur_extension', action='store_true', help='Use linear blur extension', default=False)
     args = parser.parse_args()
     run_logical_id = f'{args.dataset}_hybrid_{args.run_name}'
     if args.dataset.lower() == 'cifar':
-        cfg = cvt_13_cifar_config.get_cvt_13_cifar_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
+        cfg = cvt_13_cifar_config.get_cvt_13_cifar_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min, use_linear_blur_extension=args.linear_blur_extension)
         gaussian_dataloader = dataloader.build_gaussian_dataloader_cifar(cfg)
         train_loader, val_loader = dataloader.get_cifar_dataloaders(cfg)
         num_classes = 10
     elif args.dataset.lower() == 'imagenet':
-        cfg = cvt_13_imagenet_config.get_cvt_13_imagenet_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min)
+        cfg = cvt_13_imagenet_config.get_cvt_13_imagenet_config(run_id=run_logical_id, lerac_epochs=args.lerac_epochs, blur_epochs=args.blur_epochs, eta_min=args.eta_min, use_linear_blur_extension=args.linear_blur_extension)
         gaussian_dataloader = dataloader.build_gaussian_dataloader_imagenet(cfg)
         train_loader, val_loader = dataloader.get_imagenet_dataloaders(cfg)
         num_classes = 100

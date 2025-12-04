@@ -1,4 +1,4 @@
-def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: int = 20, eta_min: float = 2e-8):
+def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: int = 20, eta_min: float = 2e-8, use_linear_blur_extension: bool = False) -> dict:
 # params largely copied from https://github.com/leoxiaobin/CvT/blob/main/experiments/imagenet/cvt/cvt-13-224x224.yaml
     config = {
     "OUTPUT_DIR": f"OUTPUT/{run_id}",
@@ -96,7 +96,8 @@ def get_cvt_13_imagenet_config(run_id: str, lerac_epochs: int = 5, blur_epochs: 
         "BLUR": {
             "KERNEL_SIZE": 5,
             "SIGMA": 1,
-            "EPOCHS": blur_epochs
+            "EPOCHS": blur_epochs,
+            "USE_LINEAR_DECAY": use_linear_blur_extension
         },            
         "OPTIMIZER": "adamW",
         "WD": 0.05,
